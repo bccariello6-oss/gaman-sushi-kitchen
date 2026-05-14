@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&family=Noto+Serif+JP:wght@700&family=Shippori+Mincho:wght@500;800&display=swap');
+
+:root {
+  --bg-primary:    #12100E;
+  --bg-secondary:  #1C1916;
+  --bg-card:       #26221E;
+  --cream:         #F2EBD9;
+  --cream-dim:     #A89880;
+  --cream-faint:   #5A4F42;
+  --crimson:       #8B1A1A;
+  --crimson-hot:   #C0392B;
+  --amber:         #D4A030;
+  --amber-dim:     #7A5A1E;
+  --green:         #2D6A4F;
+  --green-light:   #74C69D;
+  --border:        rgba(212, 160, 48, 0.25);
+  --border-dim:    rgba(212, 160, 48, 0.12);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Base scrollbar definitions */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--crimson);
+}

@@ -174,6 +174,11 @@ export default function KitchenPanel() {
   const [waiterPopup, setWaiterPopup] = useState<{ table: number } | null>(null);
   const [itemReadyPopup, setItemReadyPopup] = useState<{ table: number; itemName: string } | null>(null);
 
+  const mutedRef = useRef(muted);
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
+
   // Busca inicial dos pedidos abertos
   useEffect(() => {
     const fetchOrders = async () => {
@@ -199,7 +204,7 @@ export default function KitchenPanel() {
         (payload) => {
           const newOrder = payload.new as Order;
           setOrders(prev => [newOrder, ...prev]);
-          playAlert(muted);
+          playAlert(mutedRef.current);
           setPopup({ 
             id: newOrder.id, 
             table: newOrder.table, 
@@ -215,12 +220,14 @@ export default function KitchenPanel() {
           setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Supabase Realtime Kitchen Status:', status);
+      });
       
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [muted]);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -280,7 +287,7 @@ export default function KitchenPanel() {
         return { ...o, items: newItems };
       }));
       setItemReadyPopup({ table, itemName });
-      playItemReadyAlert(muted);
+      playItemReadyAlert(mutedRef.current);
       
       // Update in DB
       const order = orders.find(o => o.id === orderId);

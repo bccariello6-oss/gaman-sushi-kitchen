@@ -565,14 +565,6 @@ export default function KitchenPanel() {
               }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', padding: 0 }}>
                 {muted ? '🔕' : '🔔'}
             </button>
-            <button onClick={() => {
-              handleSimulate();
-              if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume();
-              }
-            }} style={{ backgroundColor: 'var(--crimson)', color: 'var(--cream)', border: 'none', padding: '8px 18px', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '14px', transition: 'filter 0.2s' }} onMouseOver={e => e.currentTarget.style.filter = 'brightness(1.2)'} onMouseOut={e => e.currentTarget.style.filter = 'none'}>
-                + Simular
-            </button>
           </div>
         </div>
 

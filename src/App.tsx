@@ -173,6 +173,7 @@ export default function KitchenPanel() {
   const [popup, setPopup] = useState<{ id: string; table: number; items: number } | null>(null);
   const [waiterPopup, setWaiterPopup] = useState<{ table: number } | null>(null);
   const [itemReadyPopup, setItemReadyPopup] = useState<{ table: number; itemName: string } | null>(null);
+  const knownOrderIds = useRef<Set<string>>(new Set());
 
   const mutedRef = useRef(muted);
   useEffect(() => {
@@ -190,6 +191,7 @@ export default function KitchenPanel() {
       
       if (!error && data) {
         setOrders(data as Order[]);
+        data.forEach((o: any) => knownOrderIds.current.add(o.id));
       }
     };
     fetchOrders();
@@ -204,12 +206,15 @@ export default function KitchenPanel() {
         (payload) => {
           const newOrder = payload.new as Order;
           setOrders(prev => [newOrder, ...prev]);
-          playAlert(mutedRef.current);
-          setPopup({ 
-            id: newOrder.id, 
-            table: newOrder.table, 
-            items: newOrder.items?.reduce((acc, i) => acc + i.qty, 0) || 0 
-          });
+          if (!knownOrderIds.current.has(newOrder.id)) {
+            knownOrderIds.current.add(newOrder.id);
+            playAlert(mutedRef.current);
+            setPopup({ 
+              id: newOrder.id, 
+              table: newOrder.table, 
+              items: newOrder.items?.reduce((acc, i) => acc + i.qty, 0) || 0 
+            });
+          }
         }
       )
       .on(
@@ -233,7 +238,23 @@ export default function KitchenPanel() {
         .limit(100);
       
       if (!error && data) {
-        setOrders(data as Order[]);
+        const fetchedOrders = data as Order[];
+        const newOrders = fetchedOrders.filter(o => !knownOrderIds.current.has(o.id));
+        
+        if (newOrders.length > 0 && knownOrderIds.current.size > 0) {
+          // Detectamos novos pedidos via polling!
+          playAlert(mutedRef.current);
+          const newest = newOrders[0];
+          setPopup({ 
+            id: newest.id, 
+            table: newest.table, 
+            items: newest.items?.reduce((acc, i) => acc + i.qty, 0) || 0 
+          });
+        }
+        
+        // Atualiza o set de conhecidos
+        fetchedOrders.forEach(o => knownOrderIds.current.add(o.id));
+        setOrders(fetchedOrders);
       }
     }, 3000);
       

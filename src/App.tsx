@@ -224,8 +224,22 @@ export default function KitchenPanel() {
         console.log('Supabase Realtime Kitchen Status:', status);
       });
       
+    // Polling fallback to guarantee updates
+    const pollInterval = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('gaman_orders')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(100);
+      
+      if (!error && data) {
+        setOrders(data as Order[]);
+      }
+    }, 3000);
+      
     return () => {
       supabase.removeChannel(ch);
+      clearInterval(pollInterval);
     };
   }, []);
 
@@ -306,6 +320,10 @@ export default function KitchenPanel() {
           }).eq('id', orderId);
         }
       }
+      
+      // Force an immediate poll to sync correctly across all clients
+      const { data } = await supabase.from('gaman_orders').select('*').order('createdAt', { ascending: false }).limit(100);
+      if (data) setOrders(data as Order[]);
   }, [muted, orders]);
 
   const stats = useMemo(() => {

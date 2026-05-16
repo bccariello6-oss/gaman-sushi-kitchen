@@ -245,9 +245,7 @@ export default function KitchenPanel() {
           setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
         }
       )
-      .subscribe((status) => {
-        console.log('Supabase Realtime Kitchen Status:', status);
-      });
+      .subscribe();
       
     // Polling fallback to guarantee updates
     const pollInterval = setInterval(async () => {

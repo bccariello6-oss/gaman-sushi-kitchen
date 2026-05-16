@@ -41,18 +41,14 @@ type UrgencyInfo = { level: 'Crítico' | 'Atenção' | 'Normal', sidebar: string
 
 function getStation(itemName: string) {
   const n = itemName.toLowerCase();
-  if (n.includes("sashimi") || n.includes("sushi") || n.includes("gunkan") ||
-      n.includes("temaki") || n.includes("makimono") || n.includes("harumaki"))
-    return { label: "Sushi Bar", color: "#13aff0", kanji: "寿" };
-  if (n.includes("robata") || n.includes("grelhado"))
-    return { label: "Robata", color: "#C8922A", kanji: "炉" };
-  if (n.includes("tempurá") || n.includes("tempura") || n.includes("frito") ||
-      n.includes("bolinho") || n.includes("wonton"))
-    return { label: "Fritura", color: "#D4A030", kanji: "天" };
-  if (n.includes("bebida") || n.includes("sake") || n.includes("chá") ||
-      n.includes("água") || n.includes("suco"))
+  
+  if (n.includes("coca") || n.includes("ice tea") || n.includes("água") || n.includes("bebida") || n.includes("sake") || n.includes("chá") || n.includes("suco"))
     return { label: "Bar", color: "#74C69D", kanji: "飲" };
-  return { label: "Geral", color: "#A89880", kanji: "食" };
+    
+  if (n.includes("hot") || n.includes("robata") || n.includes("harumaki") || n.includes("yakisoba") || n.includes("tempurá") || n.includes("tempura") || n.includes("guiosa") || n.includes("bolinho") || n.includes("cogumelo") || n.includes("edamame") || n.includes("frango") || n.includes("legumes") || n.includes("nem tão hot") || n.includes("wonton") || n.includes("grelhado") && !n.includes("salmão grelhado"))
+    return { label: "Cozinha Quente", color: "#D4A030", kanji: "火" };
+
+  return { label: "Sushi Bar", color: "#13aff0", kanji: "寿" };
 }
 
 function getUrgency(createdAt: string, now: Date): UrgencyInfo {
@@ -429,10 +425,8 @@ export default function KitchenPanel() {
   const stationQueue = useMemo(() => {
       const counts: Record<string, { count: number; station: ReturnType<typeof getStation> }> = {
         'Sushi Bar': { count: 0, station: { label: 'Sushi Bar', color: '#13aff0', kanji: '寿' } },
-        'Robata': { count: 0, station: { label: 'Robata', color: '#C8922A', kanji: '炉' } },
-        'Fritura': { count: 0, station: { label: 'Fritura', color: '#D4A030', kanji: '天' } },
+        'Cozinha Quente': { count: 0, station: { label: 'Cozinha Quente', color: '#D4A030', kanji: '火' } },
         'Bar': { count: 0, station: { label: 'Bar', color: '#74C69D', kanji: '飲' } },
-        'Geral': { count: 0, station: { label: 'Geral', color: '#A89880', kanji: '食' } },
       };
 
       orders.filter(o => o.status === 'pending').forEach(o => {
@@ -456,7 +450,7 @@ export default function KitchenPanel() {
       return [...orders.filter(o => o.status === 'completed')].sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()).slice(0, 3);
   }, [orders]);
 
-  const filters = ['Todos', 'Críticos', 'Sushi Bar', 'Robata', 'Fritura', 'Bar'];
+  const filters = ['Todos', 'Críticos', 'Sushi Bar', 'Cozinha Quente', 'Bar'];
   const sorts = ['Mais antigo primeiro', 'Mais recente primeiro', 'Mesa (crescente)', 'Nível de urgência'];
 
   return (

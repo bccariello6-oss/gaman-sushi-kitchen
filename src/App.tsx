@@ -62,22 +62,30 @@ function getUrgency(createdAt: string, now: Date): UrgencyInfo {
   return { level: 'Normal', sidebar: '#C8922A', border: 'var(--border)', badge: '#A89880', pulsing: false };
 }
 
+let audioContext: AudioContext | null = null;
+
 async function playAlert(muted: boolean) {
   if (muted) return;
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    if (ctx.state === 'suspended') await ctx.resume();
+    if (!audioContext) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContext = new AudioContextClass();
+    }
+    
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
     
     const frequencies = [110, 165, 220, 311, 440, 659, 880];
-    const startTime = ctx.currentTime;
+    const startTime = audioContext.currentTime;
     
     frequencies.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      if (!audioContext) return;
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(audioContext.destination);
       osc.type = i === 0 ? "sine" : "triangle";
       osc.frequency.setValueAtTime(freq, startTime);
       gain.gain.setValueAtTime(i === 0 ? 0.4 : 0.15, startTime);
@@ -86,26 +94,33 @@ async function playAlert(muted: boolean) {
       osc.start(startTime);
       osc.stop(startTime + decayTime + 0.1);
     });
-  } catch(_) {}
+  } catch(e) {
+    console.error('Erro ao tocar som:', e);
+  }
 }
 
-// Short bright chime for individual item ready
 async function playItemReadyAlert(muted: boolean) {
   if (muted) return;
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    if (ctx.state === 'suspended') await ctx.resume();
+    if (!audioContext) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContext = new AudioContextClass();
+    }
+    
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
     
     const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 major chord arpeggio
-    const startTime = ctx.currentTime;
+    const startTime = audioContext.currentTime;
     
     notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      if (!audioContext) return;
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(audioContext.destination);
       osc.type = 'sine';
       const t = startTime + (i * 0.08);
       osc.frequency.setValueAtTime(freq, t);
@@ -115,7 +130,9 @@ async function playItemReadyAlert(muted: boolean) {
       osc.start(t);
       osc.stop(t + 0.7);
     });
-  } catch(_) {}
+  } catch(e) {
+    console.error('Erro ao tocar som:', e);
+  }
 }
 
 function groupOrderItems(items: OrderItem[]) {
@@ -174,6 +191,8 @@ export default function KitchenPanel() {
   const [waiterPopup, setWaiterPopup] = useState<{ table: number } | null>(null);
   const [itemReadyPopup, setItemReadyPopup] = useState<{ table: number; itemName: string } | null>(null);
   const knownOrderIds = useRef<Set<string>>(new Set());
+  const isInitialLoad = useRef(true);
+  const [needsInteraction, setNeedsInteraction] = useState(false);
 
   const mutedRef = useRef(muted);
   useEffect(() => {
@@ -192,6 +211,7 @@ export default function KitchenPanel() {
       if (!error && data) {
         setOrders(data as Order[]);
         data.forEach((o: any) => knownOrderIds.current.add(o.id));
+        isInitialLoad.current = false;
       }
     };
     fetchOrders();
@@ -241,7 +261,7 @@ export default function KitchenPanel() {
         const fetchedOrders = data as Order[];
         const newOrders = fetchedOrders.filter(o => !knownOrderIds.current.has(o.id));
         
-        if (newOrders.length > 0 && knownOrderIds.current.size > 0) {
+        if (newOrders.length > 0 && !isInitialLoad.current) {
           // Detectamos novos pedidos via polling!
           playAlert(mutedRef.current);
           const newest = newOrders[0];
@@ -250,6 +270,11 @@ export default function KitchenPanel() {
             table: newest.table, 
             items: newest.items?.reduce((acc, i) => acc + i.qty, 0) || 0 
           });
+          
+          // Se o áudio estiver bloqueado, avisa o usuário
+          if (audioContext && audioContext.state === 'suspended') {
+            setNeedsInteraction(true);
+          }
         }
         
         // Atualiza o set de conhecidos
@@ -534,14 +559,41 @@ export default function KitchenPanel() {
             <span style={{ fontSize: '22px', fontFamily: '"DM Sans", sans-serif', fontVariantNumeric: 'tabular-nums', color: 'var(--cream)', fontWeight: 500 }}>
                 {now.toLocaleTimeString('pt-BR', { hour12: false })}
             </span>
-            <button aria-label="Toggle Sound" onClick={() => setMuted(!muted)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', padding: 0 }}>
+            <button aria-label="Toggle Sound" onClick={() => {
+                setMuted(!muted);
+                if (audioContext && audioContext.state === 'suspended') {
+                  audioContext.resume();
+                }
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', padding: 0 }}>
                 {muted ? '🔕' : '🔔'}
             </button>
-            <button onClick={handleSimulate} style={{ backgroundColor: 'var(--crimson)', color: 'var(--cream)', border: 'none', padding: '8px 18px', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '14px', transition: 'filter 0.2s' }} onMouseOver={e => e.currentTarget.style.filter = 'brightness(1.2)'} onMouseOut={e => e.currentTarget.style.filter = 'none'}>
+            <button onClick={() => {
+              handleSimulate();
+              if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+              }
+            }} style={{ backgroundColor: 'var(--crimson)', color: 'var(--cream)', border: 'none', padding: '8px 18px', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '14px', transition: 'filter 0.2s' }} onMouseOver={e => e.currentTarget.style.filter = 'brightness(1.2)'} onMouseOut={e => e.currentTarget.style.filter = 'none'}>
                 + Simular
             </button>
           </div>
         </div>
+
+        {needsInteraction && (
+          <div 
+            onClick={() => {
+              if (audioContext) audioContext.resume();
+              setNeedsInteraction(false);
+            }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '40px', borderRadius: '24px', border: '2px solid var(--amber)', textAlign: 'center', animation: 'slideIn 0.5s ease-out' }}>
+              <span style={{ fontSize: '64px', marginBottom: '24px', display: 'block' }}>🔊</span>
+              <h2 style={{ color: 'var(--cream)', fontSize: '24px', marginBottom: '12px' }}>O som está pausado</h2>
+              <p style={{ color: 'var(--cream-dim)', marginBottom: '32px' }}>Clique em qualquer lugar para ativar os alertas sonoros.</p>
+              <button style={{ backgroundColor: 'var(--amber)', color: 'var(--bg-primary)', border: 'none', padding: '12px 32px', borderRadius: '12px', fontWeight: 800, textTransform: 'uppercase' }}>Ativar Som Agora</button>
+            </div>
+          </div>
+        )}
 
         {/* Toolbar */}
         <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', padding: '16px 32px', borderBottom: '1px solid var(--border-dim)', flexShrink: 0 }}>
